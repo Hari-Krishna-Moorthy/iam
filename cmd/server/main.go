@@ -6,6 +6,7 @@ import (
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth/strategies"
+	applicationRateLimit "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/ratelimit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	infraAuth "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/config"
@@ -28,7 +29,13 @@ func main() {
 	}
 
 	// Auto-migrate models
-	db.AutoMigrate(&models.TenantModel{}, &models.UserModel{}, &models.RoleModel{}, &models.AuditLogModel{})
+	db.AutoMigrate(
+		&models.TenantModel{},
+		&models.UserModel{},
+		&models.RoleModel{},
+		&models.AuditLogModel{},
+		&models.RateLimitConfigModel{},
+	)
 
 	// 2. Setup Redis
 	rdb := redis.NewClient(&redis.Options{
@@ -40,6 +47,7 @@ func main() {
 	userRepo := repositories.NewUserRepository(db)
 	roleRepo := repositories.NewRoleRepository(db)
 	auditRepo := repositories.NewAuditRepository(db)
+	ratelimitRepo := repositories.NewRateLimitRepository(db)
 	sessRepo := redisRepo.NewSessionRepository(rdb)
 
 	// 4. Setup Providers
@@ -51,13 +59,16 @@ func main() {
 		"password": pwdStrategy,
 	}
 
-	// 6. Setup Services
+	// 6. Setup Limiters
+	limiter := applicationRateLimit.NewRedisLimiter(rdb, ratelimitRepo)
+
+	// 7. Setup Services
 	authService := auth.NewService(tenantRepo, sessRepo, jwtProvider, authStrategies)
 
-	// 7. Setup Router
-	r := interfacesHttp.NewRouter(tenantRepo, sessRepo, auditRepo, authService)
+	// 8. Setup Router
+	r := interfacesHttp.NewRouter(tenantRepo, sessRepo, auditRepo, limiter, authService)
 
-	// 8. Start Server
+	// 9. Start Server
 	log.Printf("Server starting on port %s...", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatalf("Server failed: %v", err)

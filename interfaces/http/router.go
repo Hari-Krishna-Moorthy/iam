@@ -5,6 +5,7 @@ import (
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/audit"
+	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/ratelimit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/tenant"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/interfaces/http/handlers"
@@ -17,6 +18,7 @@ func NewRouter(
 	tenantRepo tenant.Repository,
 	sessionRepo session.Repository,
 	auditRepo audit.Repository,
+	limiter ratelimit.Limiter,
 	authService auth.Service,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -35,6 +37,7 @@ func NewRouter(
 	// Protected routes (Feature D: Hydration)
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.TenantMiddleware(tenantRepo))
+		r.Use(middleware.RateLimitMiddleware(limiter))
 		r.Use(middleware.AuthMiddleware(sessionRepo))
 
 		r.Get("/me", func(w http.ResponseWriter, r *http.Request) {
