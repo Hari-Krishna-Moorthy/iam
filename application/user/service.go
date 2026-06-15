@@ -21,14 +21,29 @@ type Service interface {
 }
 
 type userService struct {
-	userRepo user.Repository
+	userRepo   user.Repository
+	policyRepo user.PasswordPolicyRepository
 }
 
-func NewService(userRepo user.Repository) Service {
-	return &userService{userRepo: userRepo}
+func NewService(userRepo user.Repository, policyRepo user.PasswordPolicyRepository) Service {
+	return &userService{
+		userRepo:   userRepo,
+		policyRepo: policyRepo,
+	}
 }
 
 func (s *userService) RegisterUser(ctx context.Context, req RegistrationRequest) (*user.User, error) {
+	// 1. Get and Validate Policy
+	policy, err := s.policyRepo.GetByTenantID(ctx, req.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get password policy: %w", err)
+	}
+
+	if err := policy.Validate(req.Password); err != nil {
+		return nil, err
+	}
+
+	// 2. Hash Password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)

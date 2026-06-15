@@ -19,17 +19,30 @@ func (m *mockUserRepo) GetByEmail(ctx context.Context, tid, email string) (*doma
 func (m *mockUserRepo) GetByUsername(ctx context.Context, tid, uname string) (*domainUser.User, error) { return nil, nil }
 func (m *mockUserRepo) Save(ctx context.Context, u *domainUser.User) error                         { return m.saveFunc(u) }
 
+type mockPolicyRepo struct {
+	getFunc func(tid string) (*domainUser.PasswordPolicy, error)
+}
+func (m *mockPolicyRepo) GetByTenantID(ctx context.Context, tid string) (*domainUser.PasswordPolicy, error) { return m.getFunc(tid) }
+func (m *mockPolicyRepo) Save(ctx context.Context, p *domainUser.PasswordPolicy) error { return nil }
+
 var _ = Describe("UserService", func() {
 	var (
-		service  user.Service
-		repo     *mockUserRepo
-		ctx      context.Context
+		service    user.Service
+		repo       *mockUserRepo
+		policyRepo *mockPolicyRepo
+		ctx        context.Context
 	)
 
 	BeforeEach(func() {
 		repo = &mockUserRepo{}
-		service = user.NewService(repo)
+		policyRepo = &mockPolicyRepo{}
+		service = user.NewService(repo, policyRepo)
 		ctx = context.Background()
+
+		// Default policy for tests
+		policyRepo.getFunc = func(tid string) (*domainUser.PasswordPolicy, error) {
+			return &domainUser.PasswordPolicy{MinLength: 0}, nil
+		}
 	})
 
 	Context("RegisterUser", func() {
@@ -70,6 +83,19 @@ var _ = Describe("UserService", func() {
 			_, err := service.RegisterUser(ctx, req)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("db error"))
+		})
+
+		It("should fail if password violates policy", func() {
+			policyRepo.getFunc = func(tid string) (*domainUser.PasswordPolicy, error) {
+				return &domainUser.PasswordPolicy{MinLength: 10}, nil
+			}
+
+			req := user.RegistrationRequest{
+				Password: "short",
+			}
+
+			_, err := service.RegisterUser(ctx, req)
+			Expect(err).To(Equal(domainUser.ErrPasswordTooShort))
 		})
 	})
 })

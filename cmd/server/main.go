@@ -8,6 +8,7 @@ import (
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth/strategies"
 	applicationRateLimit "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/ratelimit"
 	applicationRole "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/role"
+	applicationUser "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/user"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	infraAuth "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/config"
@@ -36,6 +37,7 @@ func main() {
 		&models.RoleModel{},
 		&models.AuditLogModel{},
 		&models.RateLimitConfigModel{},
+		&models.PasswordPolicyModel{},
 	)
 
 	// 2. Setup Redis
@@ -49,6 +51,7 @@ func main() {
 	roleRepo := repositories.NewRoleRepository(db)
 	auditRepo := repositories.NewAuditRepository(db)
 	ratelimitRepo := repositories.NewRateLimitRepository(db)
+	policyRepo := repositories.NewPasswordPolicyRepository(db)
 	sessRepo := redisRepo.NewSessionRepository(rdb)
 
 	// 4. Setup Providers
@@ -66,6 +69,7 @@ func main() {
 	// 7. Setup Services
 	authService := auth.NewService(tenantRepo, sessRepo, jwtProvider, authStrategies)
 	roleService := applicationRole.NewService(roleRepo)
+	_ = applicationUser.NewService(userRepo, policyRepo) // UserService (not used in router yet but for wiring)
 
 	// 8. Setup Router
 	r := interfacesHttp.NewRouter(tenantRepo, sessRepo, auditRepo, limiter, authService, roleService)
