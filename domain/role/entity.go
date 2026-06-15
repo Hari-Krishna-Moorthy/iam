@@ -18,4 +18,5 @@ type Repository interface {
 	GetByID(ctx context.Context, id string) (*Role, error)
 	GetByTenantID(ctx context.Context, tenantID string) ([]Role, error)
 	Save(ctx context.Context, role *Role) error
+	Delete(ctx context.Context, id string) error
 }

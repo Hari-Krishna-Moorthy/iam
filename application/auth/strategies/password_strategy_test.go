@@ -25,7 +25,9 @@ type mockRoleRepo struct {
 }
 func (m *mockRoleRepo) GetByID(ctx context.Context, id string) (*role.Role, error) { return m.getByIDFunc(id) }
 func (m *mockRoleRepo) GetByTenantID(ctx context.Context, tid string) ([]role.Role, error) { return nil, nil }
-func (m *mockRoleRepo) Save(ctx context.Context, r *role.Role) error { return nil }
+func (m *mockRoleRepo) Save(ctx context.Context, r *role.Role) error                  { return nil }
+func (m *mockRoleRepo) Delete(ctx context.Context, id string) error                  { return nil }
+
 
 var _ = Describe("PasswordStrategy", func() {
 	var (

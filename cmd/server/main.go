@@ -7,6 +7,7 @@ import (
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth/strategies"
 	applicationRateLimit "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/ratelimit"
+	applicationRole "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/role"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	infraAuth "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/config"
@@ -64,9 +65,10 @@ func main() {
 
 	// 7. Setup Services
 	authService := auth.NewService(tenantRepo, sessRepo, jwtProvider, authStrategies)
+	roleService := applicationRole.NewService(roleRepo)
 
 	// 8. Setup Router
-	r := interfacesHttp.NewRouter(tenantRepo, sessRepo, auditRepo, limiter, authService)
+	r := interfacesHttp.NewRouter(tenantRepo, sessRepo, auditRepo, limiter, authService, roleService)
 
 	// 9. Start Server
 	log.Printf("Server starting on port %s...", cfg.Port)

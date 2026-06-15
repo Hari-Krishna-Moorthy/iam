@@ -41,3 +41,7 @@ func (r *roleRepository) Save(ctx context.Context, roleEntity *role.Role) error 
 	model := models.FromRoleDomain(roleEntity)
 	return r.db.WithContext(ctx).Save(model).Error
 }
+
+func (r *roleRepository) Delete(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).Delete(&models.RoleModel{}, "id = ?", id).Error
+}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
+	applicationRole "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/role"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/audit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/ratelimit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
@@ -20,6 +21,7 @@ func NewRouter(
 	auditRepo audit.Repository,
 	limiter ratelimit.Limiter,
 	authService auth.Service,
+	roleService applicationRole.Service,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -28,6 +30,7 @@ func NewRouter(
 	r.Use(middleware.AuditMiddleware(auditRepo))
 
 	authHandler := handlers.NewAuthHandler(authService)
+	roleHandler := handlers.NewRoleHandler(roleService)
 
 	// Public routes
 	r.Group(func(r chi.Router) {
@@ -44,6 +47,15 @@ func NewRouter(
 			// Example of accessing hydrated headers
 			userID := r.Header.Get("X-User-ID")
 			w.Write([]byte("Hello, user " + userID))
+		})
+
+		// Role Management
+		r.Route("/roles", func(r chi.Router) {
+			r.Post("/", roleHandler.CreateRole)
+			r.Get("/", roleHandler.ListRoles)
+			r.Get("/{id}", roleHandler.GetRole)
+			r.Put("/{id}", roleHandler.UpdateRole)
+			r.Delete("/{id}", roleHandler.DeleteRole)
 		})
 	})
 

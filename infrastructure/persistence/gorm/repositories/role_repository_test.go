@@ -51,4 +51,18 @@ var _ = Describe("RoleRepository", func() {
 			Expect(r.Permissions).To(HaveLen(1))
 		})
 	})
+
+	Context("Delete", func() {
+		It("should delete the role", func() {
+			rid := "role-uuid"
+			mock.ExpectBegin()
+			mock.ExpectExec(regexp.QuoteMeta(`UPDATE "roles" SET "deleted_at"=$1 WHERE id = $2 AND "roles"."deleted_at" IS NULL`)).
+				WithArgs(sqlmock.AnyArg(), rid).
+				WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectCommit()
+
+			err := repo.Delete(ctx, rid)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
 })
