@@ -5,6 +5,7 @@ import (
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
 	applicationRole "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/role"
+	applicationTenant "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/tenant"
 	applicationUser "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/user"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/audit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/ratelimit"
@@ -24,6 +25,8 @@ func NewRouter(
 	authService auth.Service,
 	roleService applicationRole.Service,
 	groupService applicationUser.GroupService,
+	tenantService applicationTenant.Service,
+	userService applicationUser.Service,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -34,39 +37,49 @@ func NewRouter(
 	authHandler := handlers.NewAuthHandler(authService)
 	roleHandler := handlers.NewRoleHandler(roleService)
 	groupHandler := handlers.NewGroupHandler(groupService)
+	tenantHandler := handlers.NewTenantHandler(tenantService)
+	userHandler := handlers.NewUserHandler(userService)
 
 	// Public routes
 	r.Group(func(r chi.Router) {
 		r.Post("/login", authHandler.Login)
+		// Usually, Tenant creation might be an internal admin API, but we'll expose it here for demonstration.
+		r.Post("/tenants", tenantHandler.RegisterTenant)
 	})
 
 	// Protected routes (Feature D: Hydration)
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.TenantMiddleware(tenantRepo))
-		r.Use(middleware.RateLimitMiddleware(limiter))
-		r.Use(middleware.AuthMiddleware(sessionRepo))
+		
+		// Public to tenant, but requires tenant context
+		r.Post("/users/register", userHandler.RegisterUser)
+		
+		// Fully protected routes (Require Token)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RateLimitMiddleware(limiter))
+			r.Use(middleware.AuthMiddleware(sessionRepo))
 
-		r.Get("/me", func(w http.ResponseWriter, r *http.Request) {
-			// Example of accessing hydrated headers
-			userID := r.Header.Get("X-User-ID")
-			w.Write([]byte("Hello, user " + userID))
-		})
+			r.Get("/me", func(w http.ResponseWriter, r *http.Request) {
+				userID := r.Header.Get("X-User-ID")
+				w.Write([]byte("Hello, user " + userID))
+			})
 
-		// Role Management
-		r.Route("/roles", func(r chi.Router) {
-			r.Post("/", roleHandler.CreateRole)
-			r.Get("/", roleHandler.ListRoles)
-			r.Get("/{id}", roleHandler.GetRole)
-			r.Put("/{id}", roleHandler.UpdateRole)
-			r.Delete("/{id}", roleHandler.DeleteRole)
-		})
+			// Role Management
+			r.Route("/roles", func(r chi.Router) {
+				r.Post("/", roleHandler.CreateRole)
+				r.Get("/", roleHandler.ListRoles)
+				r.Get("/{id}", roleHandler.GetRole)
+				r.Put("/{id}", roleHandler.UpdateRole)
+				r.Delete("/{id}", roleHandler.DeleteRole)
+			})
 
-		// Group Management
-		r.Route("/groups", func(r chi.Router) {
-			r.Post("/", groupHandler.CreateGroup)
-			r.Get("/", groupHandler.ListGroups)
-			r.Post("/{id}/users/{userId}", groupHandler.AddUserToGroup)
-			r.Post("/{id}/roles/{roleId}", groupHandler.AddRoleToGroup)
+			// Group Management
+			r.Route("/groups", func(r chi.Router) {
+				r.Post("/", groupHandler.CreateGroup)
+				r.Get("/", groupHandler.ListGroups)
+				r.Post("/{id}/users/{userId}", groupHandler.AddUserToGroup)
+				r.Post("/{id}/roles/{roleId}", groupHandler.AddRoleToGroup)
+			})
 		})
 	})
 

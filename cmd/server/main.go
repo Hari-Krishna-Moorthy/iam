@@ -65,7 +65,8 @@ func main() {
 	authService := auth.NewService(repos.Tenant, repos.Session, jwtProvider, authStrategies)
 	roleService := applicationRole.NewService(repos.Role)
 	groupService := applicationUser.NewGroupService(repos.Group)
-	_ = applicationUser.NewService(repos.User, repos.PasswordPolicy) // Wired for registration flows
+	tenantService := applicationTenant.NewService(repos.Tenant)
+	userService := applicationUser.NewService(repos.User, repos.PasswordPolicy)
 
 	// 9. Setup HTTP Router
 	r := interfacesHttp.NewRouter(
@@ -76,6 +77,8 @@ func main() {
 		authService,
 		roleService,
 		groupService,
+		tenantService,
+		userService,
 	)
 
 	// 10. Setup Server for Graceful Shutdown
