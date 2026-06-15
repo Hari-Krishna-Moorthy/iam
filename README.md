@@ -11,67 +11,56 @@ The project follows a clean architecture with the following layers:
 - **Infrastructure Layer (`infrastructure/`):** Concrete implementations of repositories (GORM for PostgreSQL, Redis for sessions), configurations, and logging.
 - **Interfaces Layer (`interfaces/`):** HTTP handlers, middlewares, and routing using `go-chi`.
 
-## Current State: Phase 1 (Domain Definition)
+## Current State: Phase 2 (Infrastructure Implementation)
 
-In this phase, the core domain entities and interfaces have been defined.
+In this phase, the infrastructure layer has been implemented, providing concrete data access logic.
 
-### Core Domain Entities
+### Infrastructure Components
 
-- **Tenant:** Represents an organization. Supports multi-tenancy by mapping multiple domains/origins to a single tenant.
-- **User:** Represents an identity within a tenant.
-- **Role:** A collection of permissions assigned to users.
-- **Permission:** A value object following the format `<scope>:<serviceName>:<action>`.
-- **Session:** Represents an active user session, managed in Redis for scalability.
+- **GORM Models:** PostgreSQL-specific models with struct tags for `Tenant`, `User`, and `Role`.
+- **PostgreSQL Repositories:** Concrete implementations of `domain` interfaces using GORM.
+- **Redis Session Repository:** Manages active user sessions in Redis, supporting multiple sessions per user and strict session payloads.
+- **Mapping:** Strict separation between pure `domain` entities and `infrastructure` models using mapper functions (`ToDomain` / `FromDomain`).
 
-### Domain Relationships
+### Database Schema (Conceptual)
 
 ```mermaid
-classDiagram
-    class Tenant {
-        +String ID
-        +String Name
-        +String[] Domains
-        +Boolean IsActive
+erDiagram
+    TENANT ||--o{ USER : contains
+    TENANT ||--o{ ROLE : defines
+    USER }|--|| ROLE : assigned
+    SESSION }|--|| USER : belongs_to
+
+    TENANT {
+        uuid id PK
+        string name
+        text[] domains
+        boolean is_active
     }
 
-    class User {
-        +String ID
-        +String TenantID
-        +String Username
-        +String Email
-        +String RoleID
-        +Boolean IsActive
+    USER {
+        uuid id PK
+        uuid tenant_id FK
+        string username
+        string email
+        string password_hash
+        uuid role_id FK
     }
 
-    class Role {
-        +String ID
-        +String TenantID
-        +String Name
-        +Permission[] Permissions
+    ROLE {
+        uuid id PK
+        uuid tenant_id FK
+        string name
+        text[] permissions
     }
 
-    class Permission {
-        <<Value Object>>
-        +String Scope
-        +String ServiceName
-        +String Action
-        +String String()
+    SESSION {
+        string id PK
+        string user_id
+        string tenant_id
+        string role
+        text[] permissions
     }
-
-    class Session {
-        +String ID
-        +String UserID
-        +String TenantID
-        +String Role
-        +Permission[] Permissions
-        +Time ExpiresAt
-    }
-
-    Tenant "1" -- "*" User : contains
-    Tenant "1" -- "*" Role : defines
-    User "*" -- "1" Role : assigned
-    Role "1" -- "*" Permission : has
-    User "1" -- "*" Session : owns
 ```
 
 ## Directory Structure
