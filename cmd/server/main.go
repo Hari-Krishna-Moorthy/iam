@@ -38,6 +38,7 @@ func main() {
 		&models.AuditLogModel{},
 		&models.RateLimitConfigModel{},
 		&models.PasswordPolicyModel{},
+		&models.GroupModel{},
 	)
 
 	// 2. Setup Redis
@@ -49,6 +50,7 @@ func main() {
 	tenantRepo := repositories.NewTenantRepository(db)
 	userRepo := repositories.NewUserRepository(db)
 	roleRepo := repositories.NewRoleRepository(db)
+	groupRepo := repositories.NewGroupRepository(db)
 	auditRepo := repositories.NewAuditRepository(db)
 	ratelimitRepo := repositories.NewRateLimitRepository(db)
 	policyRepo := repositories.NewPasswordPolicyRepository(db)
@@ -69,10 +71,11 @@ func main() {
 	// 7. Setup Services
 	authService := auth.NewService(tenantRepo, sessRepo, jwtProvider, authStrategies)
 	roleService := applicationRole.NewService(roleRepo)
+	groupService := applicationUser.NewGroupService(groupRepo)
 	_ = applicationUser.NewService(userRepo, policyRepo) // UserService (not used in router yet but for wiring)
 
 	// 8. Setup Router
-	r := interfacesHttp.NewRouter(tenantRepo, sessRepo, auditRepo, limiter, authService, roleService)
+	r := interfacesHttp.NewRouter(tenantRepo, sessRepo, auditRepo, limiter, authService, roleService, groupService)
 
 	// 9. Start Server
 	log.Printf("Server starting on port %s...", cfg.Port)

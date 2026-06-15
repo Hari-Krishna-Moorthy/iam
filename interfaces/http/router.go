@@ -5,6 +5,7 @@ import (
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
 	applicationRole "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/role"
+	applicationUser "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/user"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/audit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/ratelimit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
@@ -22,6 +23,7 @@ func NewRouter(
 	limiter ratelimit.Limiter,
 	authService auth.Service,
 	roleService applicationRole.Service,
+	groupService applicationUser.GroupService,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -31,6 +33,7 @@ func NewRouter(
 
 	authHandler := handlers.NewAuthHandler(authService)
 	roleHandler := handlers.NewRoleHandler(roleService)
+	groupHandler := handlers.NewGroupHandler(groupService)
 
 	// Public routes
 	r.Group(func(r chi.Router) {
@@ -56,6 +59,14 @@ func NewRouter(
 			r.Get("/{id}", roleHandler.GetRole)
 			r.Put("/{id}", roleHandler.UpdateRole)
 			r.Delete("/{id}", roleHandler.DeleteRole)
+		})
+
+		// Group Management
+		r.Route("/groups", func(r chi.Router) {
+			r.Post("/", groupHandler.CreateGroup)
+			r.Get("/", groupHandler.ListGroups)
+			r.Post("/{id}/users/{userId}", groupHandler.AddUserToGroup)
+			r.Post("/{id}/roles/{roleId}", groupHandler.AddRoleToGroup)
 		})
 	})
 
