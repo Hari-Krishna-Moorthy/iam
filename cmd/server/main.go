@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth/strategies"
@@ -12,9 +18,8 @@ import (
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	infraAuth "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/config"
-	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/persistence/gorm/models"
-	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/persistence/gorm/repositories"
-	redisRepo "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/persistence/redis/repositories"
+	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/persistence"
+	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/persistence/gorm/migrations"
 	interfacesHttp "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/interfaces/http"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
@@ -30,56 +35,79 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Auto-migrate models
-	db.AutoMigrate(
-		&models.TenantModel{},
-		&models.UserModel{},
-		&models.RoleModel{},
-		&models.AuditLogModel{},
-		&models.RateLimitConfigModel{},
-		&models.PasswordPolicyModel{},
-		&models.GroupModel{},
-	)
+	// 2. Run Database Migrations
+	if err := migrations.Run(db); err != nil {
+		log.Fatalf("Failed to run database migrations: %v", err)
+	}
+	log.Println("Database migrations applied successfully")
 
-	// 2. Setup Redis
+	// 3. Setup Redis
 	rdb := redis.NewClient(&redis.Options{
 		Addr: cfg.RedisURL,
 	})
 
-	// 3. Setup Repositories
-	tenantRepo := repositories.NewTenantRepository(db)
-	userRepo := repositories.NewUserRepository(db)
-	roleRepo := repositories.NewRoleRepository(db)
-	groupRepo := repositories.NewGroupRepository(db)
-	auditRepo := repositories.NewAuditRepository(db)
-	ratelimitRepo := repositories.NewRateLimitRepository(db)
-	policyRepo := repositories.NewPasswordPolicyRepository(db)
-	sessRepo := redisRepo.NewSessionRepository(rdb)
+	// 4. Setup Repositories (Registry pattern)
+	repos := persistence.NewRepositories(db, rdb)
 
-	// 4. Setup Providers
+	// 5. Setup Providers
 	jwtProvider := infraAuth.NewJWTProvider("my-secret-key")
 
-	// 5. Setup Auth Strategies
-	pwdStrategy := strategies.NewPasswordStrategy(userRepo, roleRepo)
+	// 6. Setup Auth Strategies
+	pwdStrategy := strategies.NewPasswordStrategy(repos.User, repos.Role)
 	authStrategies := map[string]session.AuthStrategy{
 		"password": pwdStrategy,
 	}
 
-	// 6. Setup Limiters
-	limiter := applicationRateLimit.NewRedisLimiter(rdb, ratelimitRepo)
+	// 7. Setup Limiters
+	limiter := applicationRateLimit.NewRedisLimiter(rdb, repos.RateLimit)
 
-	// 7. Setup Services
-	authService := auth.NewService(tenantRepo, sessRepo, jwtProvider, authStrategies)
-	roleService := applicationRole.NewService(roleRepo)
-	groupService := applicationUser.NewGroupService(groupRepo)
-	_ = applicationUser.NewService(userRepo, policyRepo) // UserService (not used in router yet but for wiring)
+	// 8. Setup Application Services
+	authService := auth.NewService(repos.Tenant, repos.Session, jwtProvider, authStrategies)
+	roleService := applicationRole.NewService(repos.Role)
+	groupService := applicationUser.NewGroupService(repos.Group)
+	_ = applicationUser.NewService(repos.User, repos.PasswordPolicy) // Wired for registration flows
 
-	// 8. Setup Router
-	r := interfacesHttp.NewRouter(tenantRepo, sessRepo, auditRepo, limiter, authService, roleService, groupService)
+	// 9. Setup HTTP Router
+	r := interfacesHttp.NewRouter(
+		repos.Tenant,
+		repos.Session,
+		repos.Audit,
+		limiter,
+		authService,
+		roleService,
+		groupService,
+	)
 
-	// 9. Start Server
-	log.Printf("Server starting on port %s...", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	// 10. Setup Server for Graceful Shutdown
+	srv := &http.Server{
+		Addr:    ":" + cfg.Port,
+		Handler: r,
 	}
+
+	// Start server in a goroutine so it doesn't block
+	go func() {
+		log.Printf("Server starting on port %s...", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// 11. Listen for OS signals to initiate graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Block until a signal is received
+	<-quit
+	log.Println("Shutdown signal received, shutting down gracefully...")
+
+	// Create a context with a timeout for the shutdown process
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Shutdown the server (waits for active connections to finish)
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exited cleanly")
 }
