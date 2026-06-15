@@ -14,6 +14,7 @@ import (
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth/strategies"
 	applicationRateLimit "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/ratelimit"
 	applicationRole "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/role"
+	applicationTenant "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/tenant"
 	applicationUser "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/user"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	infraAuth "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/auth"
@@ -49,16 +50,20 @@ func main() {
 	// 4. Setup Repositories (Registry pattern)
 	repos := persistence.NewRepositories(db, rdb)
 
-	// 5. Setup Providers
+	// 4. Setup Providers
 	jwtProvider := infraAuth.NewJWTProvider("my-secret-key")
+	oauthProvider := infraAuth.NewDummyOAuth2Provider()
 
-	// 6. Setup Auth Strategies
+	// 5. Setup Auth Strategies
 	pwdStrategy := strategies.NewPasswordStrategy(repos.User, repos.Role)
+	oauthStrategy := strategies.NewOAuth2Strategy(repos.User, repos.Role, oauthProvider)
 	authStrategies := map[string]session.AuthStrategy{
 		"password": pwdStrategy,
+		"oauth2":   oauthStrategy,
 	}
 
-	// 7. Setup Limiters
+	// 6. Setup Limiters
+
 	limiter := applicationRateLimit.NewRedisLimiter(rdb, repos.RateLimit)
 
 	// 8. Setup Application Services

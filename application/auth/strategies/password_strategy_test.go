@@ -14,10 +14,21 @@ import (
 
 type mockUserRepo struct {
 	getByUsernameFunc func(tenantID, username string) (*user.User, error)
+	getByEmailFunc    func(tenantID, email string) (*user.User, error)
 }
 func (m *mockUserRepo) GetByID(ctx context.Context, id string) (*user.User, error) { return nil, nil }
-func (m *mockUserRepo) GetByEmail(ctx context.Context, tid, email string) (*user.User, error) { return nil, nil }
-func (m *mockUserRepo) GetByUsername(ctx context.Context, tid, username string) (*user.User, error) { return m.getByUsernameFunc(tid, username) }
+func (m *mockUserRepo) GetByEmail(ctx context.Context, tid, email string) (*user.User, error) {
+	if m.getByEmailFunc != nil {
+		return m.getByEmailFunc(tid, email)
+	}
+	return nil, nil
+}
+func (m *mockUserRepo) GetByUsername(ctx context.Context, tid, username string) (*user.User, error) {
+	if m.getByUsernameFunc != nil {
+		return m.getByUsernameFunc(tid, username)
+	}
+	return nil, nil
+}
 func (m *mockUserRepo) Save(ctx context.Context, u *user.User) error { return nil }
 
 type mockRoleRepo struct {
