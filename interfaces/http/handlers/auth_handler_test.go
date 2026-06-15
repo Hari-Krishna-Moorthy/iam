@@ -8,16 +8,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/interfaces/http/handlers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 type mockAuthService struct {
-	authFunc func(domain, strategy string, creds map[string]string) (*session.Session, error)
+	authFunc func(domain, strategy string, creds map[string]string) (string, error)
 }
-func (m *mockAuthService) Authenticate(ctx context.Context, domain, strategy string, creds map[string]string) (*session.Session, error) {
+func (m *mockAuthService) Authenticate(ctx context.Context, domain, strategy string, creds map[string]string) (string, error) {
 	return m.authFunc(domain, strategy, creds)
 }
 
@@ -36,8 +35,8 @@ var _ = Describe("AuthHandler", func() {
 
 	Context("Login", func() {
 		It("should return token on successful login", func() {
-			service.authFunc = func(domain, strategy string, creds map[string]string) (*session.Session, error) {
-				return &session.Session{ID: "token-123"}, nil
+			service.authFunc = func(domain, strategy string, creds map[string]string) (string, error) {
+				return "token-123", nil
 			}
 
 			body, _ := json.Marshal(map[string]interface{}{
@@ -55,8 +54,8 @@ var _ = Describe("AuthHandler", func() {
 		})
 
 		It("should return 401 on failed auth", func() {
-			service.authFunc = func(domain, strategy string, creds map[string]string) (*session.Session, error) {
-				return nil, errors.New("unauthorized")
+			service.authFunc = func(domain, strategy string, creds map[string]string) (string, error) {
+				return "", errors.New("unauthorized")
 			}
 
 			body, _ := json.Marshal(map[string]interface{}{

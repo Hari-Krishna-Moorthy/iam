@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
+	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/audit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/tenant"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/interfaces/http/handlers"
@@ -15,12 +16,14 @@ import (
 func NewRouter(
 	tenantRepo tenant.Repository,
 	sessionRepo session.Repository,
+	auditRepo audit.Repository,
 	authService auth.Service,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
+	r.Use(middleware.AuditMiddleware(auditRepo))
 
 	authHandler := handlers.NewAuthHandler(authService)
 

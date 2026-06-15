@@ -33,25 +33,38 @@ type mockAuthStrategy struct {
 func (m *mockAuthStrategy) Authenticate(ctx context.Context, creds map[string]string) (*session.Session, error) { return m.authFunc(creds) }
 func (m *mockAuthStrategy) ValidateToken(ctx context.Context, token string) (*session.Session, error) { return nil, nil }
 
+type TokenProvider interface {
+	GenerateToken(ctx context.Context, session *session.Session) (string, error)
+	ValidateToken(ctx context.Context, token string) (*session.Session, error)
+}
+
+type mockTokenProvider struct {
+	genFunc func(s *session.Session) (string, error)
+}
+func (m *mockTokenProvider) GenerateToken(ctx context.Context, s *session.Session) (string, error) { return m.genFunc(s) }
+func (m *mockTokenProvider) ValidateToken(ctx context.Context, t string) (*session.Session, error) { return nil, nil }
+
 var _ = Describe("AuthService", func() {
 	var (
-		service     auth.Service
-		tenantRepo  *mockTenantRepo
-		sessionRepo *mockSessionRepo
-		strategy    *mockAuthStrategy
-		ctx         context.Context
+		service       auth.Service
+		tenantRepo    *mockTenantRepo
+		sessionRepo   *mockSessionRepo
+		tokenProvider *mockTokenProvider
+		strategy      *mockAuthStrategy
+		ctx           context.Context
 	)
 
 	BeforeEach(func() {
 		tenantRepo = &mockTenantRepo{}
 		sessionRepo = &mockSessionRepo{}
+		tokenProvider = &mockTokenProvider{}
 		strategy = &mockAuthStrategy{}
 		ctx = context.Background()
 
 		strategies := map[string]session.AuthStrategy{
 			"password": strategy,
 		}
-		service = auth.NewService(tenantRepo, sessionRepo, strategies)
+		service = auth.NewService(tenantRepo, sessionRepo, tokenProvider, strategies)
 	})
 
 	Context("Authenticate", func() {
@@ -65,10 +78,13 @@ var _ = Describe("AuthService", func() {
 			sessionRepo.saveFunc = func(s *session.Session) error {
 				return nil
 			}
+			tokenProvider.genFunc = func(s *session.Session) (string, error) {
+				return "jwt-token", nil
+			}
 
-			sess, err := service.Authenticate(ctx, "example.com", "password", nil)
+			token, err := service.Authenticate(ctx, "example.com", "password", nil)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(sess.ID).To(Equal("s1"))
+			Expect(token).To(Equal("jwt-token"))
 		})
 
 		It("should fail when strategy is not found", func() {

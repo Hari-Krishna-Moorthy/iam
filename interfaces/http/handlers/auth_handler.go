@@ -35,7 +35,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		domain = r.Host
 	}
 
-	sess, err := h.authService.Authenticate(r.Context(), domain, req.Strategy, req.Credentials)
+	token, err := h.authService.Authenticate(r.Context(), domain, req.Strategy, req.Credentials)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -43,6 +43,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"token": sess.ID, // Using session ID as token for simplicity
+		"token": token,
 	})
 }
