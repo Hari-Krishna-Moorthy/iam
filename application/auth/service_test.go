@@ -71,13 +71,29 @@ var _ = Describe("AuthService", func() {
 			Expect(sess.ID).To(Equal("s1"))
 		})
 
-		It("should fail when tenant not found", func() {
+		It("should fail when strategy is not found", func() {
 			tenantRepo.getFunc = func(domain string) (*tenant.Tenant, error) {
-				return nil, errors.New("not found")
+				return &tenant.Tenant{ID: "t1"}, nil
 			}
 
-			_, err := service.Authenticate(ctx, "wrong.com", "password", nil)
-			Expect(err).To(Equal(auth.ErrTenantNotFound))
+			_, err := service.Authenticate(ctx, "example.com", "unknown_strategy", nil)
+			Expect(err).To(Equal(auth.ErrInvalidStrategy))
+		})
+
+		It("should fail when session fails to save", func() {
+			tenantRepo.getFunc = func(domain string) (*tenant.Tenant, error) {
+				return &tenant.Tenant{ID: "t1"}, nil
+			}
+			strategy.authFunc = func(creds map[string]string) (*session.Session, error) {
+				return &session.Session{ID: "s1"}, nil
+			}
+			sessionRepo.saveFunc = func(s *session.Session) error {
+				return errors.New("redis error")
+			}
+
+			_, err := service.Authenticate(ctx, "example.com", "password", nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to save session"))
 		})
 	})
 })

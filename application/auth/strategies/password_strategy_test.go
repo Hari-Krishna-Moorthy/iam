@@ -2,6 +2,7 @@ package strategies_test
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth/strategies"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/role"
@@ -67,5 +68,33 @@ var _ = Describe("PasswordStrategy", func() {
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("invalid credentials"))
+	})
+
+	It("should fail when user is not found", func() {
+		userRepo.getByUsernameFunc = func(tid, username string) (*user.User, error) {
+			return nil, errors.New("not found")
+		}
+
+		s := strategies.NewPasswordStrategy(userRepo, roleRepo)
+		_, err := s.Authenticate(ctx, map[string]string{"username": "unknown", "password": "any"})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid credentials"))
+	})
+
+	It("should fail when role is not found", func() {
+		hash, _ := bcrypt.GenerateFromPassword([]byte("pass"), bcrypt.DefaultCost)
+		userRepo.getByUsernameFunc = func(tid, username string) (*user.User, error) {
+			return &user.User{ID: "u1", PasswordHash: string(hash), RoleID: "bad-role"}, nil
+		}
+		roleRepo.getByIDFunc = func(id string) (*role.Role, error) {
+			return nil, errors.New("role not found")
+		}
+
+		s := strategies.NewPasswordStrategy(userRepo, roleRepo)
+		_, err := s.Authenticate(ctx, map[string]string{"username": "u1", "password": "pass"})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("user role not found"))
 	})
 })
