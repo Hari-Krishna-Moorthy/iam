@@ -1,6 +1,18 @@
 # Multi-Tenant IAM Service
 
-A highly scalable, multi-tenant Identity and Access Management (IAM) service built with Go, adhering to strict Domain-Driven Design (DDD) principles.
+A highly scalable, multi-tenant Identity and Access Management (IAM) service built with Go, adhering to strict Domain-Driven Design (DDD) and Test-Driven Development (TDD) principles.
+
+## Features
+
+- **Origin-Based Multi-Tenancy:** Seamlessly identifies tenants based on request `Origin` or `Host` headers.
+- **Robust Authentication (JWT & Strategies):** Uses a Strategy Pattern for extensible auth methods. Pre-configured with secure Bcrypt password hashing and issues signed JWTs.
+- **Redis Session Management:** Tracks multiple active sessions per user, allowing for instant invalidation and centralized state management.
+- **Downstream Request Hydration:** Middleware validates JWTs and injects `X-User-ID`, `X-Tenant-ID`, `X-Role`, and `X-Permissions` into downstream HTTP headers.
+- **Advanced Rate Limiting:** Multi-tenant rate limiting backed by Redis. Supports 4 algorithms (Fixed Window, Sliding Window, Leaky Bucket, Token Bucket) configured per-tenant.
+- **Asynchronous Audit Logging:** Captures all authentication and management actions into PostgreSQL via non-blocking goroutines.
+- **RBAC & Group Management:** Dynamic APIs for managing Roles, Permissions, and hierarchical User Groups (Many-to-Many relationships).
+- **Password Policy Enforcement:** Tenant-specific configurable password policies (length, numbers, special characters, uppercase).
+- **Graceful Shutdown:** Safely drains active HTTP requests and background tasks upon receiving OS termination signals.
 
 ## Local Development
 
@@ -32,21 +44,10 @@ To run the service locally with a real database and Redis:
 
 The project follows a clean architecture with the following layers:
 
-- **Domain Layer (`domain/`):** Contains pure business logic, entities, value objects, and repository interfaces. No external dependencies.
-- **Application Layer (`application/`):** Orchestrates use cases and interacts with domain models and repository interfaces.
-- **Infrastructure Layer (`infrastructure/`):** Concrete implementations of repositories (GORM for PostgreSQL, Redis for sessions), configurations, and logging.
-- **Interfaces Layer (`interfaces/`):** HTTP handlers, middlewares, and routing using `go-chi`.
-
-## Current State: Phase 2 (Infrastructure Implementation)
-
-In this phase, the infrastructure layer has been implemented, providing concrete data access logic.
-
-### Infrastructure Components
-
-- **GORM Models:** PostgreSQL-specific models with struct tags for `Tenant`, `User`, and `Role`.
-- **PostgreSQL Repositories:** Concrete implementations of `domain` interfaces using GORM.
-- **Redis Session Repository:** Manages active user sessions in Redis, supporting multiple sessions per user and strict session payloads.
-- **Mapping:** Strict separation between pure `domain` entities and `infrastructure` models using mapper functions (`ToDomain` / `FromDomain`).
+- **Domain Layer (`domain/`):** Contains pure business logic, entities, value objects, and repository interfaces. No external dependencies or GORM tags.
+- **Application Layer (`application/`):** Orchestrates use cases (Auth, Users, Roles, Rate Limits) and interacts with domain models.
+- **Infrastructure Layer (`infrastructure/`):** Concrete implementations of repositories (GORM for PostgreSQL, Redis), Configurations, Migrations, and JWT Providers.
+- **Interfaces Layer (`interfaces/`):** HTTP handlers, middlewares (Tenant, Auth, Audit, RateLimit), and routing using `go-chi`.
 
 ### Database Schema (Conceptual)
 
@@ -54,8 +55,15 @@ In this phase, the infrastructure layer has been implemented, providing concrete
 erDiagram
     TENANT ||--o{ USER : contains
     TENANT ||--o{ ROLE : defines
+    TENANT ||--o{ GROUP : organizes
+    TENANT ||--o| RATE_LIMIT_CONFIG : configures
+    TENANT ||--o| PASSWORD_POLICY : enforces
+    TENANT ||--o{ AUDIT_LOG : tracks
     USER }|--|| ROLE : assigned
-    SESSION }|--|| USER : belongs_to
+    USER }|--o{ GROUP_USERS : belongs_to
+    GROUP ||--o{ GROUP_USERS : includes
+    GROUP ||--o{ GROUP_ROLES : has
+    ROLE ||--o{ GROUP_ROLES : assigned_to
 
     TENANT {
         uuid id PK
@@ -80,55 +88,62 @@ erDiagram
         text[] permissions
     }
 
-    SESSION {
-        string id PK
-        string user_id
-        string tenant_id
-        string role
-        text[] permissions
+    GROUP {
+        uuid id PK
+        uuid tenant_id FK
+        string name
+    }
+
+    RATE_LIMIT_CONFIG {
+        uuid tenant_id PK
+        string algorithm
+        int limit
+        int burst
+    }
+    
+    PASSWORD_POLICY {
+        uuid tenant_id PK
+        int min_length
+        boolean require_number
+    }
+
+    AUDIT_LOG {
+        uuid id PK
+        uuid tenant_id FK
+        string action
+        string resource
     }
 ```
 
-## Directory Structure
+## Directory Structure Highlights
 
 ```text
 .
-├── cmd/
-│   └── server/
-│       └── main.go
-├── domain/
-│   ├── permission/
-│   │   └── value_objects.go
+├── cmd/server/main.go                   # Bootstrapping & Graceful Shutdown
+├── domain/                              # Pure Entities & Interfaces
+│   ├── ratelimit/
+│   ├── audit/
+│   ├── user/
 │   ├── role/
-│   │   ├── entity.go
-│   │   └── repository.go (interface in entity.go)
-│   ├── session/
-│   │   ├── entity.go
-│   │   └── strategy.go (interface in entity.go)
 │   ├── tenant/
-│   │   ├── entity.go
-│   │   └── repository.go (interface in entity.go)
-│   └── user/
-│       ├── entity.go
-│       └── repository.go (interface in entity.go)
-├── application/
-│   ├── auth/
-│   ├── session/
-│   ├── tenant/
-│   └── user/
+│   └── session/
+├── application/                         # Use Cases
+│   ├── auth/strategies/
+│   ├── ratelimit/
+│   ├── role/
+│   ├── user/
+│   └── tenant/
 ├── infrastructure/
-│   ├── config/
-│   ├── logger/
+│   ├── auth/                            # JWT Provider
+│   ├── config/                          # Dotenv Loader
 │   └── persistence/
-│       ├── gorm/
-│       │   ├── models/
-│       │   └── repositories/
-│       └── redis/
-│           └── repositories/
-├── interfaces/
-│   └── http/
-│       ├── handlers/
-│       ├── middleware/
-│       └── router.go
-└── README.md
+│       ├── registry.go                  # Repo Container
+│       ├── gorm/migrations/             # Auto-Migrations
+│       ├── gorm/models/                 # DB Structs with Tags
+│       ├── gorm/repositories/           # PostgreSQL Repos
+│       └── redis/repositories/          # Redis Repos
+└── interfaces/http/
+    ├── handlers/                        # HTTP Controllers
+    ├── middleware/                      # Interceptors (Audit, Auth, Tenant, RateLimit)
+    └── router.go                        # Chi Router Setup
 ```
