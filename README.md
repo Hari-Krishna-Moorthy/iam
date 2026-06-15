@@ -2,6 +2,32 @@
 
 A highly scalable, multi-tenant Identity and Access Management (IAM) service built with Go, adhering to strict Domain-Driven Design (DDD) principles.
 
+## Local Development
+
+To run the service locally with a real database and Redis:
+
+1.  **Start Services:** Use Docker Compose to spin up PostgreSQL and Redis.
+    ```bash
+    docker-compose up -d
+    ```
+
+2.  **Configuration:** The application uses a `.env` file for configuration. A default `.env` has been provided with the following settings:
+    ```text
+    DB_URL=postgres://postgres:postgres@localhost:5432/iam?sslmode=disable
+    REDIS_URL=localhost:6379
+    PORT=8080
+    ```
+
+3.  **Run the Server:**
+    ```bash
+    go run cmd/server/main.go
+    ```
+
+4.  **Run Tests:**
+    ```bash
+    go test ./...
+    ```
+
 ## Architecture Overview
 
 The project follows a clean architecture with the following layers:
