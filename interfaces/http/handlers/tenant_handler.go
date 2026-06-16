@@ -32,3 +32,14 @@ func (h *TenantHandler) RegisterTenant(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(res)
 }
+
+func (h *TenantHandler) ListTenants(w http.ResponseWriter, r *http.Request) {
+	tenants, err := h.service.ListTenants(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tenants)
+}

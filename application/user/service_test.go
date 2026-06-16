@@ -17,6 +17,7 @@ type mockUserRepo struct {
 func (m *mockUserRepo) GetByID(ctx context.Context, id string) (*domainUser.User, error)             { return nil, nil }
 func (m *mockUserRepo) GetByEmail(ctx context.Context, tid, email string) (*domainUser.User, error)  { return nil, nil }
 func (m *mockUserRepo) GetByUsername(ctx context.Context, tid, uname string) (*domainUser.User, error) { return nil, nil }
+func (m *mockUserRepo) GetByTenantID(ctx context.Context, tenantID string) ([]domainUser.User, error) { return nil, nil }
 func (m *mockUserRepo) Save(ctx context.Context, u *domainUser.User) error                         { return m.saveFunc(u) }
 
 type mockPolicyRepo struct {

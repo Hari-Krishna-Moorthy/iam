@@ -21,6 +21,9 @@ type mockTenantService struct {
 func (m *mockTenantService) RegisterTenant(ctx context.Context, req tenant.RegistrationRequest) (*domainTenant.Tenant, error) {
 	return m.registerFunc(req)
 }
+func (m *mockTenantService) ListTenants(ctx context.Context) ([]domainTenant.Tenant, error) {
+	return nil, nil
+}
 
 var _ = Describe("TenantHandler", func() {
 	var (

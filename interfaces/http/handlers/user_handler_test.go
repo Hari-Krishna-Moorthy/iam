@@ -22,6 +22,9 @@ type mockUserService struct {
 func (m *mockUserService) RegisterUser(ctx context.Context, req user.RegistrationRequest) (*domainUser.User, error) {
 	return m.registerFunc(req)
 }
+func (m *mockUserService) ListUsers(ctx context.Context, tenantID string) ([]domainUser.User, error) {
+	return nil, nil
+}
 
 var _ = Describe("UserHandler", func() {
 	var (

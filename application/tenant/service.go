@@ -13,6 +13,7 @@ type RegistrationRequest struct {
 
 type Service interface {
 	RegisterTenant(ctx context.Context, req RegistrationRequest) (*tenant.Tenant, error)
+	ListTenants(ctx context.Context) ([]tenant.Tenant, error)
 }
 
 type tenantService struct {
@@ -35,4 +36,8 @@ func (s *tenantService) RegisterTenant(ctx context.Context, req RegistrationRequ
 	}
 
 	return t, nil
+}
+
+func (s *tenantService) ListTenants(ctx context.Context) ([]tenant.Tenant, error) {
+	return s.repo.GetAll(ctx)
 }

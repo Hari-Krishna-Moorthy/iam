@@ -23,5 +23,6 @@ type Repository interface {
 	GetByID(ctx context.Context, id string) (*User, error)
 	GetByEmail(ctx context.Context, tenantID, email string) (*User, error)
 	GetByUsername(ctx context.Context, tenantID, username string) (*User, error)
+	GetByTenantID(ctx context.Context, tenantID string) ([]User, error)
 	Save(ctx context.Context, user *User) error
 }

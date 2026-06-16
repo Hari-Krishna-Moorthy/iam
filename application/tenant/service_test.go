@@ -16,6 +16,7 @@ type mockTenantRepo struct {
 
 func (m *mockTenantRepo) GetByID(ctx context.Context, id string) (*domainTenant.Tenant, error)     { return nil, nil }
 func (m *mockTenantRepo) GetByDomain(ctx context.Context, domain string) (*domainTenant.Tenant, error) { return nil, nil }
+func (m *mockTenantRepo) GetAll(ctx context.Context) ([]domainTenant.Tenant, error)              { return nil, nil }
 func (m *mockTenantRepo) Save(ctx context.Context, t *domainTenant.Tenant) error                  { return m.saveFunc(t) }
 
 var _ = Describe("TenantService", func() {

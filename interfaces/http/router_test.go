@@ -30,6 +30,7 @@ type mockTenantRepo struct {
 }
 func (m *mockTenantRepo) GetByID(ctx context.Context, id string) (*tenant.Tenant, error) { return nil, nil }
 func (m *mockTenantRepo) GetByDomain(ctx context.Context, domain string) (*tenant.Tenant, error) { return m.getFunc(domain) }
+func (m *mockTenantRepo) GetAll(ctx context.Context) ([]tenant.Tenant, error) { return nil, nil }
 func (m *mockTenantRepo) Save(ctx context.Context, t *tenant.Tenant) error { return nil }
 
 type mockSessionRepo struct {
@@ -73,9 +74,11 @@ func (d *dummyGroupService) ListGroups(ctx context.Context, tenantID string) ([]
 
 type dummyTenantService struct{}
 func (d *dummyTenantService) RegisterTenant(ctx context.Context, req applicationTenant.RegistrationRequest) (*tenant.Tenant, error) { return nil, nil }
+func (d *dummyTenantService) ListTenants(ctx context.Context) ([]tenant.Tenant, error) { return nil, nil }
 
 type dummyUserService struct{}
 func (d *dummyUserService) RegisterUser(ctx context.Context, req applicationUser.RegistrationRequest) (*user.User, error) { return nil, nil }
+func (d *dummyUserService) ListUsers(ctx context.Context, tenantID string) ([]user.User, error) { return nil, nil }
 
 type dummyBulkService struct{}
 func (d *dummyBulkService) SubmitBulkCreate(ctx context.Context, tenantID string, req applicationUser.BulkCreateUsersRequest) (string, error) { return "", nil }

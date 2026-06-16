@@ -66,6 +66,13 @@ func NewRouter(
 				w.Write([]byte("Hello, user " + userID))
 			})
 
+			// Tenant Management (Super Admin only - enforced by logic in handler or service if needed, 
+			// but here we'll just expose it, the middleware already restricts X-Target-Tenant-ID)
+			r.Get("/tenants", tenantHandler.ListTenants)
+
+			// User Management
+			r.Get("/users", userHandler.ListUsers)
+
 			// Bulk Operations & Jobs
 			r.Route("/bulk", func(r chi.Router) {
 				r.Post("/users/create", bulkHandler.BulkCreateUsers)

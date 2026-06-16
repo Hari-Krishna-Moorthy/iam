@@ -20,5 +20,6 @@ type Tenant struct {
 type Repository interface {
 	GetByID(ctx context.Context, id string) (*Tenant, error)
 	GetByDomain(ctx context.Context, domain string) (*Tenant, error)
+	GetAll(ctx context.Context) ([]Tenant, error)
 	Save(ctx context.Context, tenant *Tenant) error
 }

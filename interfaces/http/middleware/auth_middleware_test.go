@@ -32,6 +32,7 @@ func (m *mockAuthTenantRepo) GetByID(ctx context.Context, id string) (*tenant.Te
 	return nil, nil
 }
 func (m *mockAuthTenantRepo) GetByDomain(ctx context.Context, domain string) (*tenant.Tenant, error) { return nil, nil }
+func (m *mockAuthTenantRepo) GetAll(ctx context.Context) ([]tenant.Tenant, error) { return nil, nil }
 func (m *mockAuthTenantRepo) Save(ctx context.Context, t *tenant.Tenant) error { return nil }
 
 var _ = Describe("AuthMiddleware", func() {

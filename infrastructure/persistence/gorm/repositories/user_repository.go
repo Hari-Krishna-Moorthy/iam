@@ -40,6 +40,18 @@ func (r *userRepository) GetByUsername(ctx context.Context, tenantID, username s
 	return model.ToDomain(), nil
 }
 
+func (r *userRepository) GetByTenantID(ctx context.Context, tenantID string) ([]user.User, error) {
+	var models []models.UserModel
+	if err := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID).Find(&models).Error; err != nil {
+		return nil, err
+	}
+	var users []user.User
+	for _, m := range models {
+		users = append(users, *m.ToDomain())
+	}
+	return users, nil
+}
+
 func (r *userRepository) Save(ctx context.Context, u *user.User) error {
 	model := models.FromUserDomain(u)
 	return r.db.WithContext(ctx).Save(model).Error

@@ -29,6 +29,9 @@ func (m *mockUserRepo) GetByUsername(ctx context.Context, tid, username string) 
 	}
 	return nil, nil
 }
+func (m *mockUserRepo) GetByTenantID(ctx context.Context, tenantID string) ([]user.User, error) {
+	return nil, nil
+}
 func (m *mockUserRepo) Save(ctx context.Context, u *user.User) error { return nil }
 
 type mockRoleRepo struct {

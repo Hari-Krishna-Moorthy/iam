@@ -17,6 +17,7 @@ type mockTenantRepo struct {
 }
 func (m *mockTenantRepo) GetByID(ctx context.Context, id string) (*tenant.Tenant, error) { return nil, nil }
 func (m *mockTenantRepo) GetByDomain(ctx context.Context, domain string) (*tenant.Tenant, error) { return m.getFunc(domain) }
+func (m *mockTenantRepo) GetAll(ctx context.Context) ([]tenant.Tenant, error) { return nil, nil }
 func (m *mockTenantRepo) Save(ctx context.Context, t *tenant.Tenant) error { return nil }
 
 var _ = Describe("TenantMiddleware", func() {

@@ -45,3 +45,25 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(res)
 }
+
+func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := r.Context().Value(middleware.TenantIDKey).(string)
+	if !ok {
+		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		return
+	}
+
+	users, err := h.service.ListUsers(r.Context(), tenantID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Remove password hashes from response
+	for i := range users {
+		users[i].PasswordHash = ""
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}

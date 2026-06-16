@@ -33,6 +33,18 @@ func (r *tenantRepository) GetByDomain(ctx context.Context, domain string) (*ten
 	return model.ToDomain(), nil
 }
 
+func (r *tenantRepository) GetAll(ctx context.Context) ([]tenant.Tenant, error) {
+	var models []models.TenantModel
+	if err := r.db.WithContext(ctx).Find(&models).Error; err != nil {
+		return nil, err
+	}
+	var tenants []tenant.Tenant
+	for _, m := range models {
+		tenants = append(tenants, *m.ToDomain())
+	}
+	return tenants, nil
+}
+
 func (r *tenantRepository) Save(ctx context.Context, t *tenant.Tenant) error {
 	model := models.FromTenantDomain(t)
 	return r.db.WithContext(ctx).Save(model).Error

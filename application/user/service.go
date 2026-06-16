@@ -18,6 +18,7 @@ type RegistrationRequest struct {
 
 type Service interface {
 	RegisterUser(ctx context.Context, req RegistrationRequest) (*user.User, error)
+	ListUsers(ctx context.Context, tenantID string) ([]user.User, error)
 }
 
 type userService struct {
@@ -63,4 +64,8 @@ func (s *userService) RegisterUser(ctx context.Context, req RegistrationRequest)
 	}
 
 	return u, nil
+}
+
+func (s *userService) ListUsers(ctx context.Context, tenantID string) ([]user.User, error) {
+	return s.userRepo.GetByTenantID(ctx, tenantID)
 }
