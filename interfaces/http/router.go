@@ -52,6 +52,7 @@ func NewRouter(
 	tenantHandler := handlers.NewTenantHandler(tenantService)
 	userHandler := handlers.NewUserHandler(userService)
 	bulkHandler := handlers.NewBulkHandler(bulkService)
+	auditHandler := handlers.NewAuditHandler(auditRepo)
 
 	// Public routes
 	r.Group(func(r chi.Router) {
@@ -83,6 +84,9 @@ func NewRouter(
 
 			// User Management
 			r.Get("/users", userHandler.ListUsers)
+
+			// Audit Logs
+			r.Get("/audit", auditHandler.ListLogs)
 
 			// Bulk Operations & Jobs
 			r.Route("/bulk", func(r chi.Router) {
