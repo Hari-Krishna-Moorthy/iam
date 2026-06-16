@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/audit"
+	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/job"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/ratelimit"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/role"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
@@ -23,6 +24,7 @@ type Repositories struct {
 	RateLimit      ratelimit.Repository
 	PasswordPolicy user.PasswordPolicyRepository
 	Session        session.Repository
+	Job            job.Repository
 }
 
 // NewRepositories initializes and returns a complete registry of repositories.
@@ -36,5 +38,6 @@ func NewRepositories(db *gorm.DB, rdb *redis.Client) *Repositories {
 		RateLimit:      gormRepos.NewRateLimitRepository(db),
 		PasswordPolicy: gormRepos.NewPasswordPolicyRepository(db),
 		Session:        redisRepos.NewSessionRepository(rdb),
+		Job:            redisRepos.NewJobRepository(rdb),
 	}
 }

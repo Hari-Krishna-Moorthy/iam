@@ -16,6 +16,7 @@ import (
 	applicationRole "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/role"
 	applicationTenant "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/tenant"
 	applicationUser "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/user"
+	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/worker"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/session"
 	infraAuth "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/auth"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/infrastructure/config"
@@ -72,6 +73,12 @@ func main() {
 	groupService := applicationUser.NewGroupService(repos.Group)
 	tenantService := applicationTenant.NewService(repos.Tenant)
 	userService := applicationUser.NewService(repos.User, repos.PasswordPolicy)
+	bulkService := applicationUser.NewBulkService(repos.Job)
+
+	// 8b. Start Background Worker for Jobs
+	jobWorker := worker.NewJobWorker(repos.Job, userService, "bulk_ops")
+	stopWorker := jobWorker.Start(context.Background())
+	defer stopWorker() // Ensure worker stops when main exits
 
 	// 9. Setup HTTP Router
 	r := interfacesHttp.NewRouter(
@@ -84,6 +91,7 @@ func main() {
 		groupService,
 		tenantService,
 		userService,
+		bulkService,
 	)
 
 	// 10. Setup Server for Graceful Shutdown

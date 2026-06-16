@@ -12,6 +12,7 @@ import (
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/tenant"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/role"
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/user"
+	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/job"
 
 	applicationRole "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/role"
 	applicationTenant "github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/tenant"
@@ -76,6 +77,10 @@ func (d *dummyTenantService) RegisterTenant(ctx context.Context, req application
 type dummyUserService struct{}
 func (d *dummyUserService) RegisterUser(ctx context.Context, req applicationUser.RegistrationRequest) (*user.User, error) { return nil, nil }
 
+type dummyBulkService struct{}
+func (d *dummyBulkService) SubmitBulkCreate(ctx context.Context, tenantID string, req applicationUser.BulkCreateUsersRequest) (string, error) { return "", nil }
+func (d *dummyBulkService) GetJobStatus(ctx context.Context, jobID string) (*job.Job, error) { return nil, nil }
+
 var _ = Describe("Router E2E Tests", func() {
 	var (
 		ts          *httptest.Server
@@ -99,6 +104,7 @@ var _ = Describe("Router E2E Tests", func() {
 			&dummyGroupService{},
 			&dummyTenantService{},
 			&dummyUserService{},
+			&dummyBulkService{},
 		)
 
 		ts = httptest.NewServer(router)

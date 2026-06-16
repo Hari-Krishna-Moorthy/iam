@@ -27,6 +27,7 @@ func NewRouter(
 	groupService applicationUser.GroupService,
 	tenantService applicationTenant.Service,
 	userService applicationUser.Service,
+	bulkService applicationUser.BulkService,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -39,6 +40,7 @@ func NewRouter(
 	groupHandler := handlers.NewGroupHandler(groupService)
 	tenantHandler := handlers.NewTenantHandler(tenantService)
 	userHandler := handlers.NewUserHandler(userService)
+	bulkHandler := handlers.NewBulkHandler(bulkService)
 
 	// Public routes
 	r.Group(func(r chi.Router) {
@@ -63,6 +65,13 @@ func NewRouter(
 				userID := r.Header.Get("X-User-ID")
 				w.Write([]byte("Hello, user " + userID))
 			})
+
+			// Bulk Operations & Jobs
+			r.Route("/bulk", func(r chi.Router) {
+				r.Post("/users/create", bulkHandler.BulkCreateUsers)
+			})
+			r.Get("/jobs/{id}", bulkHandler.GetJobStatus)
+
 
 			// Role Management
 			r.Route("/roles", func(r chi.Router) {
