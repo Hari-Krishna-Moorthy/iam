@@ -15,6 +15,7 @@ import (
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/interfaces/http/middleware"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func NewRouter(
@@ -30,6 +31,16 @@ func NewRouter(
 	bulkService applicationUser.BulkService,
 ) *chi.Mux {
 	r := chi.NewRouter()
+
+	// CORS Setup
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://*", "http://*"}, // For production, specify exact origins
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Target-Tenant-ID", "Origin"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
