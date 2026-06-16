@@ -14,6 +14,7 @@ type TenantModel struct {
 	Name      string         `gorm:"not null"`
 	Domains   pq.StringArray `gorm:"type:text[];index:,type:gin"`
 	IsActive  bool           `gorm:"default:true"`
+	IsSystem  bool           `gorm:"default:false"` // New field for Super Admin logic
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -31,6 +32,7 @@ func (m *TenantModel) ToDomain() *tenant.Tenant {
 		Name:      m.Name,
 		Domains:   []string(m.Domains),
 		IsActive:  m.IsActive,
+		IsSystem:  m.IsSystem,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
@@ -43,6 +45,7 @@ func FromTenantDomain(t *tenant.Tenant) *TenantModel {
 		Name:      t.Name,
 		Domains:   pq.StringArray(t.Domains),
 		IsActive:  t.IsActive,
+		IsSystem:  t.IsSystem,
 		CreatedAt: t.CreatedAt,
 		UpdatedAt: t.UpdatedAt,
 	}

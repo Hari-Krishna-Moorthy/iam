@@ -11,6 +11,7 @@ type Tenant struct {
 	Name      string
 	Domains   []string // List of hostnames/origins mapped to this tenant
 	IsActive  bool
+	IsSystem  bool // Indicates if this is the global System Tenant for Super Admins
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

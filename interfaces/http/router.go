@@ -57,7 +57,7 @@ func NewRouter(
 		// Fully protected routes (Require Token)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RateLimitMiddleware(limiter))
-			r.Use(middleware.AuthMiddleware(sessionRepo))
+			r.Use(middleware.AuthMiddleware(sessionRepo, tenantRepo))
 
 			r.Get("/me", func(w http.ResponseWriter, r *http.Request) {
 				userID := r.Header.Get("X-User-ID")
