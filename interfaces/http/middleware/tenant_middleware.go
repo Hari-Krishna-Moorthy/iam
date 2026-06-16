@@ -3,6 +3,8 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/domain/tenant"
 )
@@ -20,9 +22,12 @@ func TenantMiddleware(repo tenant.Repository) func(http.Handler) http.Handler {
 				origin = r.Host
 			}
 
-			t, err := repo.GetByDomain(r.Context(), origin)
+			// Normalize domain: remove protocol and port
+			domain := normalizeDomain(origin)
+
+			t, err := repo.GetByDomain(r.Context(), domain)
 			if err != nil {
-				http.Error(w, "Tenant not found", http.StatusNotFound)
+				http.Error(w, "Tenant not found for domain: "+domain, http.StatusNotFound)
 				return
 			}
 
@@ -30,4 +35,25 @@ func TenantMiddleware(repo tenant.Repository) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func normalizeDomain(raw string) string {
+	// 1. Try parsing as URL to handle http://localhost:5173
+	if strings.Contains(raw, "://") {
+		u, err := url.Parse(raw)
+		if err == nil {
+			host := u.Hostname()
+			if host != "" {
+				return host
+			}
+		}
+	}
+
+	// 2. Handle cases like localhost:8080 or just google.com
+	host := raw
+	if strings.Contains(host, ":") {
+		parts := strings.Split(host, ":")
+		host = parts[0]
+	}
+	return host
 }

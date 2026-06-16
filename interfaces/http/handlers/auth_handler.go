@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/Hari-Krishna-Moorthy/multi-tenant-IAM/application/auth"
 )
@@ -27,13 +29,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Domain extraction for Feature A is handled by middleware, 
-	// but we can also extract it here if needed or use context.
 	// For now, let's assume Host is used if Origin is missing.
-	domain := r.Header.Get("Origin")
-	if domain == "" {
-		domain = r.Host
+	rawDomain := r.Header.Get("Origin")
+	if rawDomain == "" {
+		rawDomain = r.Host
 	}
+
+	domain := normalizeDomain(rawDomain)
 
 	token, err := h.authService.Authenticate(r.Context(), domain, req.Strategy, req.Credentials)
 	if err != nil {
@@ -45,4 +47,22 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"token": token,
 	})
+}
+
+func normalizeDomain(raw string) string {
+	if strings.Contains(raw, "://") {
+		u, err := url.Parse(raw)
+		if err == nil {
+			host := u.Hostname()
+			if host != "" {
+				return host
+			}
+		}
+	}
+	host := raw
+	if strings.Contains(host, ":") {
+		parts := strings.Split(host, ":")
+		host = parts[0]
+	}
+	return host
 }
