@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from './api';
 import { Users, LogOut, Shield, ArrowRightLeft } from 'lucide-react';
 
@@ -16,7 +16,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const checkSuperAdmin = async () => {
     try {
       // In a real app, the /me endpoint would return tenant info
-      const resp = await api.get('/me');
+      await api.get('/me');
       // If we can fetch tenants, we are probably a super admin
       const tenantsResp = await api.get('/tenants');
       setTenants(tenantsResp.data);
